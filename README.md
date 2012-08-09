@@ -1,4 +1,4 @@
 request-caching
 ===============
 
-A client-side caching HTTP client built on top of request.
+An HTTP client with caching, built on top of request.
