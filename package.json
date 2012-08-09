@@ -1,14 +1,14 @@
 {
-  "name": "request-cache",
+  "name": "request-caching",
   "version": "0.0.1",
   "description": "A client-side cache for the request module.",
-  "main": "cache.js",
+  "main": "caching.js",
   "scripts": {
     "test": "node ./tests/run.js"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/kevinswiber/request-cache"
+    "url": "https://github.com/kevinswiber/request-caching.git"
   },
   "keywords": [
     "request",
