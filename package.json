@@ -1,0 +1,24 @@
+{
+  "name": "request-cache",
+  "version": "0.0.1",
+  "description": "A client-side cache for the request module.",
+  "main": "cache.js",
+  "scripts": {
+    "test": "node ./tests/run.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kevinswiber/request-cache"
+  },
+  "keywords": [
+    "request",
+    "cache",
+    "client",
+    "http"
+  ],
+  "author": "Kevin Swiber",
+  "license": "MIT/X11",
+  "dependencies": {
+    "request": "~2.10.0"
+  }
+}
