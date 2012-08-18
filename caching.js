@@ -22,6 +22,11 @@ var caching = function(uri, options, callback) {
     }
 
     request(uri, options, function(err, res, body) {
+      if (err) {
+        callback(err, res, body);
+        return;
+      }
+
       // Add to cache if cacheable.
       if ('cache-control' in res.headers) {
         var val = res.headers['cache-control'].replace(/\s/,'').split(',');
