@@ -93,13 +93,32 @@ var redis_cache = {
       }).listen(8082, function() {
         request('http://localhost:8082', { cache: cache }, function(err, res, body) {
           if(err) return cb(err);
-          request('http://localhost:8082', { cache: cache }, function(err, res, body) {
+          request.get('http://localhost:8082', { cache: cache }, function(err, res, body) {
             if(err) return cb(err);
             assert(etag_cache);
             assert.equal(body, 'Cachifiable!');
             s.close();
             cb();
           });
+        });
+      });
+    });
+
+    it('delegates to request for non-GET methods', function(cb) {
+      var s = http.createServer(function(req, res) {
+        if(req.method == 'POST') {
+          res.writeHead(201);
+          res.end();
+        } else {
+          res.writeHead(405);
+          res.end();
+        }
+      }).listen(8083, function() {
+        request.post('http://localhost:8083', { cache: cache }, function(err, res, body) {
+          if(err) return cb(err);
+          assert.equal(res.statusCode, 201);
+          s.close();
+          cb();
         });
       });
     });

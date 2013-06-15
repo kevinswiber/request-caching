@@ -56,3 +56,10 @@ module.exports = function(uri, options, callback) {
     });
   });
 };
+
+for(var func in request) {
+  module.exports[func] = request[func];
+}
+
+module.exports.get = module.exports;
+
