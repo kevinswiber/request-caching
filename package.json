@@ -23,6 +23,6 @@
   },
   "devDependencies": {
     "mocha": "~1.11.0",
-    "connect": "~2.7.11"
+    "lru-cache": "~2.3.0"
   }
 }

@@ -1,6 +1,6 @@
 var request = require('request');
 
-var caching = function(uri, options, callback) {
+module.exports = function(uri, options, callback) {
   if (typeof uri === 'undefined') throw new Error('undefined is not a valid uri or options object.');
   if (typeof options === 'function' && !callback) callback = options;
 
@@ -69,44 +69,3 @@ var caching = function(uri, options, callback) {
     });
   });
 };
-
-// Listen... this is kinda crappy.
-var MemoryCache = function() {
-  this._cache = {};
-  this._maxLength = 20;
-  this._currentIndex = 0;
-  this._keys = new Array(this._maxLength);
-};
-
-MemoryCache.prototype.add = function(key, value, callback) {
-  if (this._currentIndex === this._maxLength - 1) {
-    this._currentIndex = 0;
-  }
-
-  if (this._keys[this._currentIndex]) {
-    delete this._cache[this._keys[this._currentIndex]];
-  }
-
-  this._keys[this._currentIndex] = key;
-
-  this._cache[key] = value;
-
-  this._currentIndex++;
-
-  if (callback) callback(null, { key: key, value: value });
-};
-
-MemoryCache.prototype.remove = function(key, callback) {
-  delete this._cache[key];
-  if (callback) callback(null, key);
-};
-
-MemoryCache.prototype.get = function(key, callback) {
-  var res;
-  if (key in this._cache) { res = this._cache[key]; }
-  if (callback) callback(null, res);
-};
-
-caching.MemoryCache = MemoryCache;
-
-module.exports = caching;
