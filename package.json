@@ -4,7 +4,7 @@
   "description": "A client-side cache for the request module.",
   "main": "caching.js",
   "scripts": {
-    "test": "node ./tests/run.js"
+    "test": "node_modules/.bin/mocha"
   },
   "repository": {
     "type": "git",
@@ -20,5 +20,9 @@
   "license": "MIT/X11",
   "dependencies": {
     "request": "~2.21.0"
+  },
+  "devDependencies": {
+    "mocha": "~1.11.0",
+    "connect": "~2.7.11"
   }
 }
