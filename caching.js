@@ -7,65 +7,52 @@ module.exports = function(uri, options, callback) {
   var cache = options.cache;
 
   cache.get(uri, function(err, value) {
-    if (err) {
-      callback.call(request, err);
-      return;
+    if (err) return callback.call(request, err);
+
+    if (value && new Date() <= value.expires) {
+      return callback.call(request, null, value.response, value.response.body);
     }
 
-    if (value) {
-      if (new Date() <= value.expires) {
-        callback.call(request, null, value.response, value.response.body);
-        return;
-      } else {
-        cache.remove(uri);
-      }
+    if (value && 'etag' in value.response.headers) {
+      if(options.headers === undefined) options.headers = {};
+      options.headers['If-None-Match'] = value.response.headers.etag;
     }
 
     request(uri, options, function(err, res, body) {
-      if (err) {
-        callback(err, res, body);
-        return;
+      if (err) return callback(err, res, body);
+
+      if(res.statusCode == 304) {
+        return callback.call(request, null, value.response, value.response.body);
       }
 
       // Add to cache if cacheable.
       if ('cache-control' in res.headers) {
         var val = res.headers['cache-control'].replace(/\s/,'').split(',');
-
         var cacheControl = {};
-
         val.forEach(function(dir) {
           var arr = dir.split('=');
           cacheControl[arr[0]] = arr[1];
         });
 
         if (cacheControl['max-age']) {
-
           var seconds = +cacheControl['max-age'];
-
           var date = new Date(res.headers['date']);
-
           var expires = new Date(date);
           expires.setSeconds(expires.getUTCSeconds() + seconds);
 
-          if (new Date() <= expires) {
-            cache.add(uri, { response: res, expires: expires }, function(err, res) {
-              callback.call(this, err, res, body);
-            });
-            return;
-          }
+          cache.add(uri, { response: res, expires: expires }, function(err) {
+            callback.call(this, err, res, body);
+          });
         }
       } else if ('expires' in res.headers) {
         var expires = new Date(res.headers['expires']);
 
-        if (new Date() <= expires) {
-          cache.add(uri, { response: res, expires: expires }, function(err, res) {
-            callback.call(this, err, res, body);
-          });
-          return;
-        }
+        cache.add(uri, { response: res, expires: expires }, function(err) {
+          callback.call(this, err, res, body);
+        });
+      } else {
+        callback.call(this, err, res, body);
       }
-
-      callback.call(this, err, res, body);
     });
   });
 };
