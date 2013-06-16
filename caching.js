@@ -40,7 +40,7 @@ module.exports = function(uri, options, callback) {
           var expires = new Date(date);
           expires.setSeconds(expires.getUTCSeconds() + seconds);
 
-          cache.add(uri, cacheControl.private, { response: res, expires: expires }, function(err) {
+          cache.add(uri, cacheControl.private, { response: cachable(res), expires: expires }, function(err) {
             callback.call(this, err, res, body);
           });
         } else {
@@ -49,7 +49,7 @@ module.exports = function(uri, options, callback) {
       } else if ('expires' in res.headers) {
         var expires = new Date(res.headers['expires']);
 
-        cache.add(uri, false, { response: res, expires: expires }, function(err) {
+        cache.add(uri, false, { response: cachable(res), expires: expires }, function(err) {
           callback.call(this, err, res, body);
         });
       } else {
@@ -57,6 +57,14 @@ module.exports = function(uri, options, callback) {
       }
     });
   });
+
+  function cachable(res) {
+    return {
+      statusCode: res.statusCode,
+      headers: res.headers,
+      body: res.body
+    }
+  }
 };
 
 for(var func in request) {
