@@ -3,26 +3,47 @@ var http = require('http');
 var request = require('../caching');
 
 var LRU = require('lru-cache');
-var lru = new LRU();
+var private_lru = new LRU();
+var public_lru = new LRU();
 var memory_cache = {
-  add: function(key, value, cb) { lru.set(key, value); cb(null); },
-  get: function(key, cb) { cb(null, lru.get(key)); },
+  add: function(uri, private, value, cb) {
+    var lru = private ? private_lru : public_lru;
+    lru.set(uri, value); cb(null); 
+  },
+  get: function(uri, cb) { 
+    cb(null, private_lru.get(uri) || public_lru.get(uri));
+  },
   // Only used by the test
-  flush: function(cb) { lru.reset; cb(null); },
+  flush: function(cb) {
+    private_lru.reset(); 
+    public_lru.reset(); 
+    cb(null);
+  },
   name: 'Memory'
 };
 
+var private_prefix = 'something';
 var redis = require('redis').createClient();
 var redis_cache = {
-  add: function(key, value, cb) { redis.set(key, JSON.stringify(value), cb) },
-  get: function(key, cb) { 
-    redis.get(key, function(err, value) {
+  add: function(uri, private, value, cb) {
+    var key = private ? private_prefix + uri : uri;
+    redis.set(key, JSON.stringify(value), cb);
+  },
+  get: function(uri, cb) {
+    redis.get(uri, function(err, value) {
       if(err) return cb(err);
-      return cb(null, JSON.parse(value));
+      if(value) return cb(null, JSON.parse(value));
+
+      redis.get(private_prefix + uri, function(err, value) {
+        if(err) return cb(err);
+        return cb(null, JSON.parse(value));
+      });
     });
   },
   // Only used by the test
-  flush: function(cb) { redis.flushdb(cb); },
+  flush: function(cb) { 
+    redis.flushdb(cb);
+  },
   name: 'Redis'
 };
 
@@ -36,6 +57,24 @@ var redis_cache = {
       var s = http.createServer(function(req, res) {
         var date = new Date().toUTCString();
         res.writeHead(200, { 'Date': date, 'Cache-Control': 'max-age=300' });
+        res.end('Cachifiable!');
+      }).listen(8080, function() {
+        request('http://localhost:8080', { cache: cache }, function(err, res) {
+          if(err) return cb(err);
+          cache.get('http://localhost:8080', function(err, val) {
+            if(err) return cb(err);
+            assert.equal(val.response.body, 'Cachifiable!');
+            s.close();
+            cb();
+          });
+        });
+      });
+    });
+
+    it('caches privately using auth header', function(cb) {
+      var s = http.createServer(function(req, res) {
+        var date = new Date().toUTCString();
+        res.writeHead(200, { 'Date': date, 'Cache-Control': 'private, max-age=300' });
         res.end('Cachifiable!');
       }).listen(8080, function() {
         request('http://localhost:8080', { cache: cache }, function(err, res) {

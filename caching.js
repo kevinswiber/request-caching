@@ -13,8 +13,8 @@ module.exports = function(uri, options, callback) {
       return callback.call(request, null, value.response, value.response.body);
     }
 
+    if(options.headers === undefined) options.headers = {};
     if (value && 'etag' in value.response.headers) {
-      if(options.headers === undefined) options.headers = {};
       options.headers['If-None-Match'] = value.response.headers.etag;
     }
 
@@ -31,23 +31,25 @@ module.exports = function(uri, options, callback) {
         var cacheControl = {};
         val.forEach(function(dir) {
           var arr = dir.split('=');
+          if(arr.length == 1) arr.push(true);
           cacheControl[arr[0]] = arr[1];
         });
-
         if (cacheControl['max-age']) {
           var seconds = +cacheControl['max-age'];
           var date = new Date(res.headers['date']);
           var expires = new Date(date);
           expires.setSeconds(expires.getUTCSeconds() + seconds);
 
-          cache.add(uri, { response: res, expires: expires }, function(err) {
+          cache.add(uri, cacheControl.private, { response: res, expires: expires }, function(err) {
             callback.call(this, err, res, body);
           });
+        } else {
+          callback.call(this, err, res, body);
         }
       } else if ('expires' in res.headers) {
         var expires = new Date(res.headers['expires']);
 
-        cache.add(uri, { response: res, expires: expires }, function(err) {
+        cache.add(uri, false, { response: res, expires: expires }, function(err) {
           callback.call(this, err, res, body);
         });
       } else {
