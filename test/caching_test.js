@@ -1,59 +1,30 @@
 var assert = require('assert');
 var http = require('http');
 var request = require('../caching');
-
 var LRU = require('lru-cache');
-var private_lru = new LRU();
-var public_lru = new LRU();
-var memory_cache = {
-  add: function(uri, private, value, cb) {
-    var lru = private ? private_lru : public_lru;
-    lru.set(uri, value); cb(null); 
-  },
-  get: function(uri, cb) { 
-    cb(null, private_lru.get(uri) || public_lru.get(uri));
-  },
-  // Only used by the test
-  flush: function(cb) {
-    private_lru.reset(); 
-    public_lru.reset(); 
-    cb(null);
-  },
-  name: 'Memory'
-};
-
-var private_prefix = 'something';
 var redis = require('redis').createClient();
-var redis_cache = {
-  add: function(uri, private, value, cb) {
-    var key = private ? private_prefix + uri : uri;
-    redis.set(key, JSON.stringify(value), cb);
-  },
-  get: function(uri, cb) {
-    redis.get(uri, function(err, value) {
-      if(err) return cb(err);
-      if(value) return cb(null, JSON.parse(value));
+var MemoryCache = require('../lib/memory_cache');
+var RedisCache = require('../lib/redis_cache');
 
-      redis.get(private_prefix + uri, function(err, value) {
+var public_lru = new LRU();
+function paul(uri) {return 'paul'+uri;}
+function lisa(uri) {return 'lisa'+uri;}
+[
+  [new MemoryCache(public_lru, new LRU()), new MemoryCache(public_lru, new LRU())],
+  [new RedisCache(redis, paul), new RedisCache(redis, lisa)]
+].forEach(function(caches) {
+  var cache = caches[0];
+  var other_cache = caches[1];
+
+  describe(cache.constructor.name + ' request-caching', function() {
+    beforeEach(function(cb) {
+      cache.flush(function(err) {
         if(err) return cb(err);
-        return cb(null, JSON.parse(value));
+        other_cache.flush(cb);
       });
     });
-  },
-  // Only used by the test
-  flush: function(cb) { 
-    redis.flushdb(cb);
-  },
-  name: 'Redis'
-};
 
-[memory_cache, redis_cache].forEach(function(cache) {
-  describe(cache.name + ' request-caching', function() {
-    beforeEach(function(cb) {
-      cache.flush(cb);
-    });
-
-    it('caches when Cache-Control header is set with max-age', function(cb) {
+    it('caches publicly when Cache-Control header is set with max-age', function(cb) {
       var s = http.createServer(function(req, res) {
         var date = new Date().toUTCString();
         res.writeHead(200, { 'Date': date, 'Cache-Control': 'max-age=300' });
@@ -61,7 +32,7 @@ var redis_cache = {
       }).listen(8080, function() {
         request('http://localhost:8080', { cache: cache }, function(err, res) {
           if(err) return cb(err);
-          cache.get('http://localhost:8080', function(err, val) {
+          other_cache.get('http://localhost:8080', function(err, val) {
             if(err) return cb(err);
             assert.equal(val.response.body, 'Cachifiable!');
             s.close();
@@ -82,8 +53,12 @@ var redis_cache = {
           cache.get('http://localhost:8080', function(err, val) {
             if(err) return cb(err);
             assert.equal(val.response.body, 'Cachifiable!');
-            s.close();
-            cb();
+            other_cache.get('http://localhost:8080', function(err, val) {
+              if(err) return cb(err);
+              assert.equal(val, undefined);
+              s.close();
+              cb();
+            });
           });
         });
       });
