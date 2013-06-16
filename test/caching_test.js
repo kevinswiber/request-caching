@@ -3,15 +3,15 @@ var http = require('http');
 var request = require('../caching');
 var LRU = require('lru-cache');
 var redis = require('redis').createClient();
-var MemoryCache = require('../lib/memory_cache');
-var RedisCache = require('../lib/redis_cache');
+
+var port = 8090;
 
 var public_lru = new LRU();
 function paul(uri) {return 'paul'+uri;}
 function lisa(uri) {return 'lisa'+uri;}
 [
-  [new MemoryCache(public_lru, new LRU()), new MemoryCache(public_lru, new LRU())],
-  [new RedisCache(redis, paul), new RedisCache(redis, lisa)]
+  [new request.MemoryCache(public_lru, new LRU()), new request.MemoryCache(public_lru, new LRU())],
+  [new request.RedisCache(redis, paul), new request.RedisCache(redis, lisa)]
 ].forEach(function(caches) {
   var cache = caches[0];
   var other_cache = caches[1];
@@ -24,39 +24,37 @@ function lisa(uri) {return 'lisa'+uri;}
       });
     });
 
-    it('caches publicly when Cache-Control header is set with max-age', function(cb) {
-      var s = http.createServer(function(req, res) {
+    it('caches publicly for Cache-Control: max-age=300', function(cb) {
+      http.createServer(function(req, res) {
         var date = new Date().toUTCString();
         res.writeHead(200, { 'Date': date, 'Cache-Control': 'max-age=300' });
         res.end('Cachifiable!');
-      }).listen(8080, function() {
-        request('http://localhost:8080', { cache: cache }, function(err, res) {
+      }).listen(++port, function() {
+        request('http://localhost:'+port, { cache: cache }, function(err, res) {
           if(err) return cb(err);
-          other_cache.get('http://localhost:8080', function(err, val) {
+          other_cache.get('http://localhost:'+port, function(err, val) {
             if(err) return cb(err);
             assert.equal(val.response.body, 'Cachifiable!');
-            s.close();
             cb();
           });
         });
       });
     });
 
-    it('caches privately using auth header', function(cb) {
-      var s = http.createServer(function(req, res) {
+    it('caches privately for Cache-Control: private, max-age=300', function(cb) {
+      http.createServer(function(req, res) {
         var date = new Date().toUTCString();
         res.writeHead(200, { 'Date': date, 'Cache-Control': 'private, max-age=300' });
         res.end('Cachifiable!');
-      }).listen(8080, function() {
-        request('http://localhost:8080', { cache: cache }, function(err, res) {
+      }).listen(++port, function() {
+        request('http://localhost:'+port, { cache: cache }, function(err, res) {
           if(err) return cb(err);
-          cache.get('http://localhost:8080', function(err, val) {
+          cache.get('http://localhost:'+port, function(err, val) {
             if(err) return cb(err);
             assert.equal(val.response.body, 'Cachifiable!');
-            other_cache.get('http://localhost:8080', function(err, val) {
+            other_cache.get('http://localhost:'+port, function(err, val) {
               if(err) return cb(err);
               assert.equal(val, undefined);
-              s.close();
               cb();
             });
           });
@@ -65,20 +63,19 @@ function lisa(uri) {return 'lisa'+uri;}
     });
 
     it('caches when Expires header is set', function(cb) {
-      var s = http.createServer(function(req, res) {
+      http.createServer(function(req, res) {
         var date = new Date().toUTCString();
         var expires = new Date(date);
         expires = new Date(expires.setSeconds(expires.getSeconds() + 30)).toUTCString();
 
         res.writeHead(200, { 'Date': date, 'Expires': expires });
         res.end('Cachifiable!');
-      }).listen(8081, function() {
-        request('http://localhost:8081', { cache: cache }, function(err, res) {
+      }).listen(++port, function() {
+        request('http://localhost:'+port, { cache: cache }, function(err, res) {
           if(err) return cb(err);
-          cache.get('http://localhost:8081', function(err, val) {
+          cache.get('http://localhost:'+port, function(err, val) {
             if(err) return cb(err);
             assert.equal(val.response.body, 'Cachifiable!');
-            s.close();
             cb();
           });
         });
@@ -87,7 +84,7 @@ function lisa(uri) {return 'lisa'+uri;}
 
     it('re-requests with etag', function(cb) {
       var etag_cache = false;
-      var s = http.createServer(function(req, res) {
+      http.createServer(function(req, res) {
         var date = new Date().toUTCString();
         var expires = new Date(date);
         expires = new Date(expires.setSeconds(expires.getSeconds() + 30)).toUTCString();
@@ -104,14 +101,13 @@ function lisa(uri) {return 'lisa'+uri;}
           res.writeHead(200, { 'Date': date, 'Expires': expires, 'ETag': 'the-etag' });
           res.end('Cachifiable!');
         }
-      }).listen(8082, function() {
-        request('http://localhost:8082', { cache: cache }, function(err, res, body) {
+      }).listen(++port, function() {
+        request('http://localhost:'+port, { cache: cache }, function(err, res, body) {
           if(err) return cb(err);
-          request.get('http://localhost:8082', { cache: cache }, function(err, res, body) {
+          request.get('http://localhost:'+port, { cache: cache }, function(err, res, body) {
             if(err) return cb(err);
             assert(etag_cache);
             assert.equal(body, 'Cachifiable!');
-            s.close();
             cb();
           });
         });
@@ -119,7 +115,7 @@ function lisa(uri) {return 'lisa'+uri;}
     });
 
     it('delegates to request for non-GET methods', function(cb) {
-      var s = http.createServer(function(req, res) {
+      http.createServer(function(req, res) {
         if(req.method == 'POST') {
           res.writeHead(201);
           res.end();
@@ -127,11 +123,10 @@ function lisa(uri) {return 'lisa'+uri;}
           res.writeHead(405);
           res.end();
         }
-      }).listen(8083, function() {
-        request.post('http://localhost:8083', { cache: cache }, function(err, res, body) {
+      }).listen(++port, function() {
+        request.post('http://localhost:'+port, { cache: cache }, function(err, res, body) {
           if(err) return cb(err);
           assert.equal(res.statusCode, 201);
-          s.close();
           cb();
         });
       });

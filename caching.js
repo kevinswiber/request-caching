@@ -65,3 +65,7 @@ for(var func in request) {
 
 module.exports.get = module.exports;
 
+module.exports.MemoryCache = require('./lib/memory_cache');
+module.exports.RedisCache = require('./lib/redis_cache');
+
+
