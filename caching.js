@@ -7,10 +7,10 @@ module.exports = function(uri, options, callback) {
   var cache = options.cache;
 
   cache.get(uri, function(err, value) {
-    if (err) return callback.call(request, err);
+    if (err) return callback(err);
 
     if (value && new Date().getTime() <= value.expires_millis) {
-      return callback.call(request, null, value.response, value.response.body);
+      return callback(null, value.response, value.response.body);
     }
 
     if(options.headers === undefined) options.headers = {};
@@ -26,7 +26,7 @@ module.exports = function(uri, options, callback) {
       if (err) return callback(err, res, body);
 
       if(res.statusCode == 304) {
-        return callback.call(request, null, value.response, value.response.body);
+        return callback(null, value.response, value.response.body);
       }
 
       var cacheable = false;
@@ -46,8 +46,6 @@ module.exports = function(uri, options, callback) {
           var date = new Date(res.headers['date']);
           var seconds = +cacheControl['max-age'];
           expires_millis = date.getTime() + 1000*seconds;
-        } else {
-          callback.call(this, err, res, body);
         }
       } else if ('expires' in res.headers) {
         cacheable = true;
@@ -61,10 +59,10 @@ module.exports = function(uri, options, callback) {
 
       if(cacheable) {
         cache.add(uri, private, { response: cachable(res), expires_millis: expires_millis }, function(err) {
-          callback.call(this, err, res, body);
+          callback(null, res, body);
         });
       } else {
-        callback.call(this, err, res, body);
+        callback(null, res, body);
       }
     });
   });
