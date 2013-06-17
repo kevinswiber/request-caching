@@ -102,11 +102,11 @@ function lisa(uri) {return 'lisa'+uri;}
       });
     });
 
-    it('re-requests with etag', function(cb) {
-      var etag_cache = false;
+    it('re-requests with If-None-Match when Etag is in response', function(cb) {
+      var three_o_four = false;
       http.createServer(function(req, res) {
         if(req.headers['if-none-match'] == 'the-etag') {
-          etag_cache = true;
+          three_o_four = true;
           res.writeHead(304);
           res.end();
         } else {
@@ -120,9 +120,41 @@ function lisa(uri) {return 'lisa'+uri;}
       }).listen(++port, function() {
         request('http://localhost:'+port, { cache: cache }, function(err, res, body) {
           if(err) return cb(err);
+          assert.equal(three_o_four, false);
           request.get('http://localhost:'+port, { cache: cache }, function(err, res, body) {
             if(err) return cb(err);
-            assert(etag_cache);
+            assert(three_o_four);
+            assert.equal(body, 'Cachifiable!');
+            cb();
+          });
+        });
+      });
+    });
+
+    it('re-requests with If-Modified-Since when Last-Modified is in response', function(cb) {
+      var last_modified = new Date();
+      var three_o_four = false;
+      http.createServer(function(req, res) {
+        var if_modified_since = req.headers['if-modified-since'] ? new Date(req.headers['if-modified-since']) : null;
+        if(if_modified_since && if_modified_since.getTime() <= last_modified.getTime()) {
+          three_o_four = true;
+          res.writeHead(304);
+          res.end();
+        } else {
+          var date = new Date().toUTCString();
+          var expires = new Date(date);
+          expires = new Date(expires.setSeconds(expires.getSeconds() -1)).toUTCString();
+
+          res.writeHead(200, { 'Date': date, 'Expires': expires, 'Last-Modified': last_modified.toUTCString() });
+          res.end('Cachifiable!');
+        }
+      }).listen(++port, function() {
+        request('http://localhost:'+port, { cache: cache }, function(err, res, body) {
+          if(err) return cb(err);
+          assert.equal(three_o_four, false);
+          request.get('http://localhost:'+port, { cache: cache }, function(err, res, body) {
+            if(err) return cb(err);
+            assert(three_o_four);
             assert.equal(body, 'Cachifiable!');
             cb();
           });

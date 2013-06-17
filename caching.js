@@ -14,8 +14,12 @@ module.exports = function(uri, options, callback) {
     }
 
     if(options.headers === undefined) options.headers = {};
+
     if (value && 'etag' in value.response.headers) {
-      options.headers['If-None-Match'] = value.response.headers.etag;
+      options.headers['If-None-Match'] = value.response.headers['etag'];
+    }
+    if (value && 'last-modified' in value.response.headers) {
+      options.headers['If-Modified-Since'] = value.response.headers['last-modified'];
     }
 
     request(uri, options, function(err, res, body) {
@@ -25,8 +29,11 @@ module.exports = function(uri, options, callback) {
         return callback.call(request, null, value.response, value.response.body);
       }
 
-      // Add to cache if cacheable.
+      var cacheable = false;
+      var expires_millis = undefined;
+      var private = false;
       if ('cache-control' in res.headers) {
+        cacheable = true;
         var val = res.headers['cache-control'].replace(/\s/,'').split(',');
         var cacheControl = {};
         val.forEach(function(dir) {
@@ -34,21 +41,26 @@ module.exports = function(uri, options, callback) {
           if(arr.length == 1) arr.push(true);
           cacheControl[arr[0]] = arr[1];
         });
+        private = cacheControl.private;
         if (cacheControl['max-age']) {
           var date = new Date(res.headers['date']);
           var seconds = +cacheControl['max-age'];
-          var expires_millis = date.getTime() + 1000*seconds;
-
-          cache.add(uri, cacheControl.private, { response: cachable(res), expires_millis: expires_millis }, function(err) {
-            callback.call(this, err, res, body);
-          });
+          expires_millis = date.getTime() + 1000*seconds;
         } else {
           callback.call(this, err, res, body);
         }
       } else if ('expires' in res.headers) {
+        cacheable = true;
         var expires = new Date(res.headers['expires']);
+        expires_millis = expires.getTime();
+      } else if ('etag' in res.headers) {
+        cacheable = true;
+      } else if ('last-modified' in res.headers) {
+        cacheable = true;
+      }
 
-        cache.add(uri, false, { response: cachable(res), expires_millis: expires.getTime() }, function(err) {
+      if(cacheable) {
+        cache.add(uri, private, { response: cachable(res), expires_millis: expires_millis }, function(err) {
           callback.call(this, err, res, body);
         });
       } else {
