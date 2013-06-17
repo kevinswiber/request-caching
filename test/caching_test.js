@@ -62,6 +62,26 @@ function lisa(uri) {return 'lisa'+uri;}
       });
     });
 
+    it('serves from cache when withing max-age', function(cb) {
+      s = http.createServer(function(req, res) {
+        var date = new Date().toUTCString();
+        res.writeHead(200, { 'Date': date, 'Cache-Control': 'max-age=300' });
+        res.end('Cachifiable!');
+      }).listen(++port, function() {
+        request('http://localhost:'+port, { cache: cache }, function(err, res) {
+          if(err) return cb(err);
+          s.close(function(err) {
+            if(err) return cb(err);
+            request('http://localhost:'+port, { cache: cache }, function(err, res, body) {
+              if(err) return cb(err);
+              assert.equal(body, 'Cachifiable!');
+              cb();
+            });
+          });
+        });
+      });
+    });
+
     it('caches when Expires header is set', function(cb) {
       http.createServer(function(req, res) {
         var date = new Date().toUTCString();
@@ -85,10 +105,6 @@ function lisa(uri) {return 'lisa'+uri;}
     it('re-requests with etag', function(cb) {
       var etag_cache = false;
       http.createServer(function(req, res) {
-        var date = new Date().toUTCString();
-        var expires = new Date(date);
-        expires = new Date(expires.setSeconds(expires.getSeconds() + 30)).toUTCString();
-
         if(req.headers['if-none-match'] == 'the-etag') {
           etag_cache = true;
           res.writeHead(304);

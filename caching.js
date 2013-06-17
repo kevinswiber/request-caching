@@ -9,7 +9,7 @@ module.exports = function(uri, options, callback) {
   cache.get(uri, function(err, value) {
     if (err) return callback.call(request, err);
 
-    if (value && new Date() <= value.expires) {
+    if (value && new Date().getTime() <= value.expires_millis) {
       return callback.call(request, null, value.response, value.response.body);
     }
 
@@ -35,12 +35,11 @@ module.exports = function(uri, options, callback) {
           cacheControl[arr[0]] = arr[1];
         });
         if (cacheControl['max-age']) {
-          var seconds = +cacheControl['max-age'];
           var date = new Date(res.headers['date']);
-          var expires = new Date(date);
-          expires.setSeconds(expires.getUTCSeconds() + seconds);
+          var seconds = +cacheControl['max-age'];
+          var expires_millis = date.getTime() + 1000*seconds;
 
-          cache.add(uri, cacheControl.private, { response: cachable(res), expires: expires }, function(err) {
+          cache.add(uri, cacheControl.private, { response: cachable(res), expires_millis: expires_millis }, function(err) {
             callback.call(this, err, res, body);
           });
         } else {
@@ -49,7 +48,7 @@ module.exports = function(uri, options, callback) {
       } else if ('expires' in res.headers) {
         var expires = new Date(res.headers['expires']);
 
-        cache.add(uri, false, { response: cachable(res), expires: expires }, function(err) {
+        cache.add(uri, false, { response: cachable(res), expires_millis: expires.getTime() }, function(err) {
           callback.call(this, err, res, body);
         });
       } else {
