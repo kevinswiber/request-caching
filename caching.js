@@ -33,7 +33,7 @@ module.exports = function(uri, options, callback) {
       var expires_millis = undefined;
       var private = false;
       if ('cache-control' in res.headers) {
-        cacheable = true;
+        // In case of Cache-Control: no-cache, cacheable should remain false.
         var val = res.headers['cache-control'].replace(/\s/,'').split(',');
         var cacheControl = {};
         val.forEach(function(dir) {
@@ -43,6 +43,7 @@ module.exports = function(uri, options, callback) {
         });
         private = cacheControl.private;
         if (cacheControl['max-age']) {
+          cacheable = true;
           var date = new Date(res.headers['date']);
           var seconds = +cacheControl['max-age'];
           expires_millis = date.getTime() + 1000*seconds;
