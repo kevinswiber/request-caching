@@ -24,6 +24,20 @@ function lisa(uri) {return 'lisa'+uri;}
       });
     });
 
+    it('still works without a cache', function(cb) {
+      http.createServer(function(req, res) {
+        var date = new Date().toUTCString();
+        res.writeHead(200, { 'Date': date, 'Cache-Control': 'max-age=300' });
+        res.end('Hello');
+      }).listen(++port, function() {
+        request('http://localhost:'+port, {}, function(err, res) {
+          if(err) return cb(err);
+          assert.equal(res.body, 'Hello');
+          cb();
+        });
+      });
+    });
+
     it('caches publicly for Cache-Control: max-age=300', function(cb) {
       http.createServer(function(req, res) {
         var date = new Date().toUTCString();

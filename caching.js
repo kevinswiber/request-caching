@@ -1,10 +1,20 @@
 var request = require('request');
 
+var null_cache = {
+  get: function(uri, cb) {
+    cb();
+  },
+
+  add: function(uri, private, value, cb) {
+    cb();
+  }
+};
+
 module.exports = function(uri, options, callback) {
   if (typeof uri === 'undefined') throw new Error('undefined is not a valid uri or options object.');
   if (typeof options === 'function' && !callback) callback = options;
 
-  var cache = options.cache;
+  var cache = options.cache || null_cache;
 
   cache.get(uri, function(err, value) {
     if (err) return callback(err);
