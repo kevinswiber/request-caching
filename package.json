@@ -4,7 +4,7 @@
   "description": "A client-side cache for the request module.",
   "main": "caching.js",
   "scripts": {
-    "test": "node ./tests/run.js"
+    "test": "node_modules/.bin/mocha"
   },
   "repository": {
     "type": "git",
@@ -19,6 +19,12 @@
   "author": "Kevin Swiber",
   "license": "MIT/X11",
   "dependencies": {
-    "request": "~2.10.0"
+    "request": "~2.21.0"
+  },
+  "devDependencies": {
+    "mocha": "~1.11.0",
+    "lru-cache": "~2.3.0",
+    "redis": "~0.8.3",
+    "hiredis": "~0.1.15"
   }
 }
