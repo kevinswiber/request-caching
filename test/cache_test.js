@@ -46,4 +46,21 @@ describe('Cache', function() {
       });
     });
   });
+
+  it('Overrides TTL with custom function', function(cb) {
+    function oneMillisecond(ttl) {
+      return 1;
+    }
+    var cache = new Cache(storage, null, null, oneMillisecond);
+    cache.set('my-uri', false, 'my-value', 100, function(err) {
+      if(err) return cb(err);
+      setTimeout(function() {
+        cache.get('my-uri', function(err, value) {
+          if(err) return cb(err);
+          assert.equal(value, undefined);
+          cb();
+        });
+      }, 10);
+    });
+  });
 });
