@@ -12,14 +12,62 @@ An HTTP client with caching, built on top of [request](https://github.com/mikeal
 * Cache TTL is based on the `Expires` response header or `max-age` value in `Cache-Control`, but can be overridden.
 * Highly customizeable with sensible defaults.
 
-## Example
+## Examples
+
+Below are some common use cases:
 
 ### In-memory cache
 
 ```javascript
 var LRU = require('lru-cache');
-var memoryStorage = new request.MemoryStorage(new LRU());
-var cache = new request.Cache(memoryStorage);
+var storage = new request.MemoryStorage(new LRU());
+var cache = new request.Cache(storage);
+
+request('http://some.url', {cache: cache}, function(err, res, body) {
+  
+});
+```
+
+### Redis cache
+
+```javascript
+var redis = require('redis').createClient()
+var storage = new request.RedisStorage(redis);
+var cache = new request.Cache(storage);
+
+request('http://some.url', {cache: cache}, function(err, res, body) {
+  
+});
+```
+
+### Private caching
+
+```javascript
+function publicFn(uri) {
+  cb(null, 'public:' + uri);
+}
+
+function privateFn(uri) {
+  cb(null, 'private:' + req.cookies['connect.sid'] + ':' uri);
+}
+
+var cache = new request.Cache(storage, publicFn, privateFn);
+
+request('http://some.url', {cache: cache}, function(err, res, body) {
+  
+});
+```
+
+### Custom TTL
+
+```javascript
+var storage = new request.RedisStorage(redis);
+
+function myTtl(ttl) {
+  return ttl * 1000; // cache it longer than the server told us to.
+}
+
+var cache = new request.Cache(storage, null, null, myTtl);
 
 request('http://some.url', {cache: cache}, function(err, res, body) {
   
