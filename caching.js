@@ -16,8 +16,10 @@ module.exports = function(uri, options, callback) {
 
   var cache = options.cache || null_cache;
 
-  cache.get(uri, function(err, value) {
+  cache.get(uri, function(err, valueAsJson) {
     if (err) return callback(err);
+
+    var value = valueAsJson ? JSON.parse(valueAsJson) : null;
 
     if (value && new Date().getTime() <= value.expires_millis) {
       return callback(null, value.response, value.response.body);
@@ -69,7 +71,12 @@ module.exports = function(uri, options, callback) {
       }
 
       if(cacheable) {
-        cache.add(uri, private, { response: cachable(res), expires_millis: expires_millis }, function(err) {
+        var cachedResponse = { response: cachable(res), expires_millis: expires_millis };
+        var cachedResponseAsJson = JSON.stringify(cachedResponse, function(k, v) {
+          return (typeof v == 'function') ? null : v;
+        });
+
+        cache.add(uri, private, cachedResponseAsJson, function(err) {
           callback(null, res, body);
         });
       } else {

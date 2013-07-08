@@ -48,6 +48,7 @@ function lisa(uri) {return 'lisa'+uri;}
           if(err) return cb(err);
           other_cache.get('http://localhost:'+port, function(err, val) {
             if(err) return cb(err);
+            val = JSON.parse(val);
             assert.equal(val.response.body, 'Cachifiable!');
             cb();
           });
@@ -65,6 +66,7 @@ function lisa(uri) {return 'lisa'+uri;}
           if(err) return cb(err);
           cache.get('http://localhost:'+port, function(err, val) {
             if(err) return cb(err);
+            val = JSON.parse(val);
             assert.equal(val.response.body, 'Cachifiable!');
             other_cache.get('http://localhost:'+port, function(err, val) {
               if(err) return cb(err);
@@ -109,6 +111,7 @@ function lisa(uri) {return 'lisa'+uri;}
           if(err) return cb(err);
           cache.get('http://localhost:'+port, function(err, val) {
             if(err) return cb(err);
+            val = JSON.parse(val);
             assert.equal(val.response.body, 'Cachifiable!');
             cb();
           });
