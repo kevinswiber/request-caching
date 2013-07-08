@@ -5,7 +5,7 @@ var null_cache = {
     cb();
   },
 
-  add: function(uri, private, value, cb) {
+  add: function(uri, private, value, expires_millis, cb) {
     cb();
   }
 };
@@ -76,7 +76,7 @@ module.exports = function(uri, options, callback) {
           return (typeof v == 'function') ? null : v;
         });
 
-        cache.add(uri, private, cachedResponseAsJson, function(err) {
+        cache.add(uri, private, cachedResponseAsJson, expires_millis, function(err) {
           callback(null, res, body);
         });
       } else {

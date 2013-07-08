@@ -24,7 +24,7 @@ request('http://some.url', {cache: cache}, function(err, res, body) {
 
 The `cache` object must be an object with the following methods:
 
-* `add(key, private, val, function(err){})`
+* `add(key, private, val, expires_millis, function(err){})`
 * `get(key, function(err, val){})`
 
 ## How it works
