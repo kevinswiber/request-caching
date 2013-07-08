@@ -77,7 +77,7 @@ module.exports = function(uri, options, callback) {
         });
 
         cache.add(uri, private, cachedResponseAsJson, expires_millis, function(err) {
-          callback(null, res, body);
+          callback(err, res, body);
         });
       } else {
         callback(null, res, body);
