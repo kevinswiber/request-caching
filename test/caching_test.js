@@ -7,11 +7,12 @@ var redis = require('redis').createClient();
 var port = 8090;
 
 var public_lru = new LRU();
-function paul(uri) {return 'paul'+uri;}
-function lisa(uri) {return 'lisa'+uri;}
+function public_fn(uri, cb) { cb(null, 'pub:'+uri); }
+function paul_private_fn(uri, cb) { cb(null, 'priv:paul:' + uri); }
+function lisa_private_fn(uri, cb) { cb(null, 'priv:lisa:' + uri); }
 [
   [new request.MemoryCache(public_lru, new LRU()), new request.MemoryCache(public_lru, new LRU())],
-  [new request.RedisCache(redis, paul), new request.RedisCache(redis, lisa)]
+  [new request.RedisCache(redis, paul_private_fn, public_fn), new request.RedisCache(redis, lisa_private_fn, public_fn)]
 ].forEach(function(caches) {
   var cache = caches[0];
   var other_cache = caches[1];
