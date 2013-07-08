@@ -6,24 +6,19 @@ var redis = require('redis').createClient();
 
 var port = 8090;
 
-var public_lru = new LRU();
 function public_fn(uri, cb) { cb(null, 'pub:'+uri); }
 function paul_private_fn(uri, cb) { cb(null, 'priv:paul:' + uri); }
 function lisa_private_fn(uri, cb) { cb(null, 'priv:lisa:' + uri); }
-[
-  [new request.MemoryCache(public_lru, new LRU()), new request.MemoryCache(public_lru, new LRU())],
-  [new request.RedisCache(redis, paul_private_fn, public_fn), new request.RedisCache(redis, lisa_private_fn, public_fn)]
-].forEach(function(caches) {
-  var cache = caches[0];
-  var other_cache = caches[1];
 
-  describe(cache.constructor.name + ' request-caching', function() {
-    beforeEach(function(cb) {
-      cache.flush(function(err) {
-        if(err) return cb(err);
-        other_cache.flush(cb);
-      });
-    });
+var memoryStorage = new request.MemoryStorage(new LRU());
+var redisStorage = new request.RedisStorage(redis);
+
+[memoryStorage, redisStorage].forEach(function(storage) {
+  var cache       = new request.Cache(storage, public_fn, paul_private_fn);
+  var other_cache = new request.Cache(storage, public_fn, lisa_private_fn);
+
+  describe(storage.constructor.name + ' request-caching', function() {
+    beforeEach(storage.flush);
 
     it('still works without a cache', function(cb) {
       http.createServer(function(req, res) {
@@ -49,7 +44,6 @@ function lisa_private_fn(uri, cb) { cb(null, 'priv:lisa:' + uri); }
           if(err) return cb(err);
           other_cache.get('http://localhost:'+port, function(err, val) {
             if(err) return cb(err);
-            val = JSON.parse(val);
             assert.equal(val.response.body, 'Cachifiable!');
             cb();
           });
@@ -67,7 +61,6 @@ function lisa_private_fn(uri, cb) { cb(null, 'priv:lisa:' + uri); }
           if(err) return cb(err);
           cache.get('http://localhost:'+port, function(err, val) {
             if(err) return cb(err);
-            val = JSON.parse(val);
             assert.equal(val.response.body, 'Cachifiable!');
             other_cache.get('http://localhost:'+port, function(err, val) {
               if(err) return cb(err);
@@ -111,31 +104,9 @@ function lisa_private_fn(uri, cb) { cb(null, 'priv:lisa:' + uri); }
           if(err) return cb(err);
           cache.get('http://localhost:'+port, function(err, val) {
             if(err) return cb(err);
-            val = JSON.parse(val);
             assert.equal(val.response.body, 'Cachifiable!');
             cb();
           });
-        });
-      });
-    });
-
-    it('Expires cached entries', function(cb) {
-      http.createServer(function(req, res) {
-        var date = new Date().toUTCString();
-        var expires = new Date(date);
-        expires = new Date(expires.setSeconds(expires.getSeconds() + 1)).toUTCString();
-        res.writeHead(200, { 'Date': date, 'Expires': expires });
-        res.end('Cachifiable!');
-      }).listen(++port, function() {
-        request('http://localhost:'+port, { cache: cache }, function(err, res) {
-          if(err) return cb(err);
-          setTimeout(function() {
-            cache.get('http://localhost:'+port, function(err, val) {
-              if(err) return cb(err);
-              assert.equal(val, undefined);
-              cb();
-            });
-          }, 1000);
         });
       });
     });
