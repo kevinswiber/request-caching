@@ -103,7 +103,6 @@ function lisa(uri) {return 'lisa'+uri;}
         var date = new Date().toUTCString();
         var expires = new Date(date);
         expires = new Date(expires.setSeconds(expires.getSeconds() + 30)).toUTCString();
-
         res.writeHead(200, { 'Date': date, 'Expires': expires });
         res.end('Cachifiable!');
       }).listen(++port, function() {
@@ -115,6 +114,27 @@ function lisa(uri) {return 'lisa'+uri;}
             assert.equal(val.response.body, 'Cachifiable!');
             cb();
           });
+        });
+      });
+    });
+
+    it('Expires cached entries', function(cb) {
+      http.createServer(function(req, res) {
+        var date = new Date().toUTCString();
+        var expires = new Date(date);
+        expires = new Date(expires.setSeconds(expires.getSeconds() + 1)).toUTCString();
+        res.writeHead(200, { 'Date': date, 'Expires': expires });
+        res.end('Cachifiable!');
+      }).listen(++port, function() {
+        request('http://localhost:'+port, { cache: cache }, function(err, res) {
+          if(err) return cb(err);
+          setTimeout(function() {
+            cache.get('http://localhost:'+port, function(err, val) {
+              if(err) return cb(err);
+              assert.equal(val, undefined);
+              cb();
+            });
+          }, 1000);
         });
       });
     });

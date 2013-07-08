@@ -71,12 +71,13 @@ module.exports = function(uri, options, callback) {
       }
 
       if(cacheable) {
+        var ttl_millis = Math.max(expires_millis - new Date().getTime(), 0);
         var cachedResponse = { response: cachable(res), expires_millis: expires_millis };
         var cachedResponseAsJson = JSON.stringify(cachedResponse, function(k, v) {
           return (typeof v == 'function') ? null : v;
         });
 
-        cache.add(uri, private, cachedResponseAsJson, expires_millis, function(err) {
+        cache.add(uri, private, cachedResponseAsJson, ttl_millis, function(err) {
           callback(err, res, body);
         });
       } else {
