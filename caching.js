@@ -97,7 +97,7 @@ for(var func in request) {
 module.exports.get = module.exports;
 
 module.exports.Cache = require('./lib/cache');
-module.exports.MemoryStorage = require('./lib/memory_storage');
-module.exports.RedisStorage = require('./lib/redis_storage');
+module.exports.MemoryStore = require('./lib/memory_store');
+module.exports.RedisStore = require('./lib/redis_store');
 
 

@@ -1,18 +1,18 @@
 var assert = require('assert');
 var LRU = require('lru-cache');
-var Storage = require('../lib/memory_storage');
-var storage = new Storage(new LRU());
+var Store = require('../lib/memory_store');
+var store = new Store(new LRU());
 
 var Cache = require('../lib/cache');
 
 describe('Cache', function() {
-  beforeEach(storage.flush);
+  beforeEach(store.flush);
 
   it('Uses default publicKeyFn if none is provided', function(cb) {
-    var cache = new Cache(storage);
+    var cache = new Cache(store);
     cache.set('my-uri', false, 'my-value', 1000, function(err) {
       if(err) return cb(err);
-      storage.get('public:my-uri', function(err, value) {
+      store.get('public:my-uri', function(err, value) {
         if(err) return cb(err);
         assert.equal(JSON.parse(value), 'my-value');
         cb();
@@ -21,7 +21,7 @@ describe('Cache', function() {
   });
 
   it('Requires an explicit privateKeyFn for private caching', function(cb) {
-    var cache = new Cache(storage);
+    var cache = new Cache(store);
     cache.set('my-uri', true, 'my-value', 1000, function(err) {
       if(!err) return cb(new Error('Should fail'));
       assert.equal(err.message, 'No provided key function for private caching');
@@ -30,7 +30,7 @@ describe('Cache', function() {
   });
 
   it('Expires cached keys after TTL', function(cb) {
-    var cache = new Cache(storage);
+    var cache = new Cache(store);
     cache.set('my-uri', false, 'my-value', 10, function(err) {
       if(err) return cb(err);
       cache.get('my-uri', function(err, value) {
@@ -51,7 +51,7 @@ describe('Cache', function() {
     function oneMillisecond(ttl) {
       return 1;
     }
-    var cache = new Cache(storage, null, null, oneMillisecond);
+    var cache = new Cache(store, null, null, oneMillisecond);
     cache.set('my-uri', false, 'my-value', 100, function(err) {
       if(err) return cb(err);
       setTimeout(function() {

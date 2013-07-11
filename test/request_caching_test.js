@@ -10,15 +10,15 @@ function public_fn(uri, cb) { cb(null, 'pub:'+uri); }
 function paul_private_fn(uri, cb) { cb(null, 'priv:paul:' + uri); }
 function lisa_private_fn(uri, cb) { cb(null, 'priv:lisa:' + uri); }
 
-var memoryStorage = new request.MemoryStorage(new LRU());
-var redisStorage = new request.RedisStorage(redis);
+var memoryStore = new request.MemoryStore(new LRU());
+var redisStore = new request.RedisStore(redis);
 
-[memoryStorage, redisStorage].forEach(function(storage) {
-  var cache       = new request.Cache(storage, public_fn, paul_private_fn);
-  var other_cache = new request.Cache(storage, public_fn, lisa_private_fn);
+[memoryStore, redisStore].forEach(function(store) {
+  var cache       = new request.Cache(store, public_fn, paul_private_fn);
+  var other_cache = new request.Cache(store, public_fn, lisa_private_fn);
 
-  describe(storage.constructor.name + ' request-caching', function() {
-    beforeEach(storage.flush);
+  describe(store.constructor.name + ' request-caching', function() {
+    beforeEach(store.flush);
 
     it('still works without a cache', function(cb) {
       http.createServer(function(req, res) {
