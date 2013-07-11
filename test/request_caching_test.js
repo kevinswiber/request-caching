@@ -6,23 +6,19 @@ var redis = require('redis').createClient();
 
 var port = 8090;
 
-var public_lru = new LRU();
-function paul(uri) {return 'paul'+uri;}
-function lisa(uri) {return 'lisa'+uri;}
-[
-  [new request.MemoryCache(public_lru, new LRU()), new request.MemoryCache(public_lru, new LRU())],
-  [new request.RedisCache(redis, paul), new request.RedisCache(redis, lisa)]
-].forEach(function(caches) {
-  var cache = caches[0];
-  var other_cache = caches[1];
+function public_fn(uri, cb) { cb(null, 'pub:'+uri); }
+function paul_private_fn(uri, cb) { cb(null, 'priv:paul:' + uri); }
+function lisa_private_fn(uri, cb) { cb(null, 'priv:lisa:' + uri); }
 
-  describe(cache.constructor.name + ' request-caching', function() {
-    beforeEach(function(cb) {
-      cache.flush(function(err) {
-        if(err) return cb(err);
-        other_cache.flush(cb);
-      });
-    });
+var memoryStorage = new request.MemoryStorage(new LRU());
+var redisStorage = new request.RedisStorage(redis);
+
+[memoryStorage, redisStorage].forEach(function(storage) {
+  var cache       = new request.Cache(storage, public_fn, paul_private_fn);
+  var other_cache = new request.Cache(storage, public_fn, lisa_private_fn);
+
+  describe(storage.constructor.name + ' request-caching', function() {
+    beforeEach(storage.flush);
 
     it('still works without a cache', function(cb) {
       http.createServer(function(req, res) {
@@ -101,7 +97,6 @@ function lisa(uri) {return 'lisa'+uri;}
         var date = new Date().toUTCString();
         var expires = new Date(date);
         expires = new Date(expires.setSeconds(expires.getSeconds() + 30)).toUTCString();
-
         res.writeHead(200, { 'Date': date, 'Expires': expires });
         res.end('Cachifiable!');
       }).listen(++port, function() {

@@ -5,7 +5,7 @@ var null_cache = {
     cb();
   },
 
-  add: function(uri, private, value, cb) {
+  set: function(uri, private, value, expires_millis, cb) {
     cb();
   }
 };
@@ -69,8 +69,11 @@ module.exports = function(uri, options, callback) {
       }
 
       if(cacheable) {
-        cache.add(uri, private, { response: cachable(res), expires_millis: expires_millis }, function(err) {
-          callback(null, res, body);
+        var ttl_millis = Math.max(expires_millis - new Date().getTime(), 0);
+        var cachedResponse = { response: cachable(res), expires_millis: expires_millis };
+
+        cache.set(uri, private, cachedResponse, ttl_millis, function(err) {
+          callback(err, res, body);
         });
       } else {
         callback(null, res, body);
@@ -93,7 +96,8 @@ for(var func in request) {
 
 module.exports.get = module.exports;
 
-module.exports.MemoryCache = require('./lib/memory_cache');
-module.exports.RedisCache = require('./lib/redis_cache');
+module.exports.Cache = require('./lib/cache');
+module.exports.MemoryStorage = require('./lib/memory_storage');
+module.exports.RedisStorage = require('./lib/redis_storage');
 
 
