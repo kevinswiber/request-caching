@@ -20,8 +20,8 @@ Below are some common use cases:
 
 ```javascript
 var LRU = require('lru-cache');
-var storage = new request.MemoryStorage(new LRU());
-var cache = new request.Cache(storage);
+var store = new request.MemoryStore(new LRU());
+var cache = new request.Cache(store);
 
 request('http://some.url', {cache: cache}, function(err, res, body) {
   
@@ -32,8 +32,8 @@ request('http://some.url', {cache: cache}, function(err, res, body) {
 
 ```javascript
 var redis = require('redis').createClient()
-var storage = new request.RedisStorage(redis);
-var cache = new request.Cache(storage);
+var store = new request.RedisStore(redis);
+var cache = new request.Cache(store);
 
 request('http://some.url', {cache: cache}, function(err, res, body) {
   
@@ -51,7 +51,7 @@ function privateFn(uri) {
   cb(null, 'private:' + req.cookies['connect.sid'] + ':' uri);
 }
 
-var cache = new request.Cache(storage, publicFn, privateFn);
+var cache = new request.Cache(store, publicFn, privateFn);
 
 request('http://some.url', {cache: cache}, function(err, res, body) {
   
@@ -61,13 +61,13 @@ request('http://some.url', {cache: cache}, function(err, res, body) {
 ### Custom TTL
 
 ```javascript
-var storage = new request.RedisStorage(redis);
+var store = new request.RedisStore(redis);
 
 function myTtl(ttl) {
   return ttl * 1000; // cache it longer than the server told us to.
 }
 
-var cache = new request.Cache(storage, null, null, myTtl);
+var cache = new request.Cache(store, null, null, myTtl);
 
 request('http://some.url', {cache: cache}, function(err, res, body) {
   
