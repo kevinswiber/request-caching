@@ -8,7 +8,7 @@ http.createServer(function(req, res) {
   var date = new Date().toUTCString();
   res.writeHead(200, { 'Date': date, 'Cache-Control': 'max-age=5' });
   console.log("Server hit!");
-  res.end('Hello');
+  res.end('Hello ' + date);
 }).listen(3000, function(err) {
 
   setInterval(function() { 
