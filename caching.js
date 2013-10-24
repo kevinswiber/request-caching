@@ -10,6 +10,8 @@ var noOpCache = {
   }
 };
 
+var FOREVER_MILLIS = 8640000000000000;
+
 module.exports = function(uri, options, callback) {
   if (typeof uri === 'undefined') throw new Error('undefined is not a valid uri or options object.');
   if (typeof options === 'function' && !callback) callback = options;
@@ -40,7 +42,7 @@ module.exports = function(uri, options, callback) {
       }
 
       var isCacheable = false;
-      var expiryTimeMillis = undefined;
+      var expiryTimeMillis = FOREVER_MILLIS;
       var private = false;
       if ('cache-control' in res.headers) {
         // In case of Cache-Control: no-cache, cacheable should remain false.
@@ -58,18 +60,21 @@ module.exports = function(uri, options, callback) {
           var seconds = +cacheControl['max-age'];
           expiryTimeMillis = date.getTime() + 1000*seconds;
         }
-      } else if ('expires' in res.headers) {
+      }
+      if ('expires' in res.headers) {
         isCacheable = true;
         var expires = new Date(res.headers['expires']);
         expiryTimeMillis = expires.getTime();
-      } else if ('etag' in res.headers) {
+      }
+      if ('etag' in res.headers) {
         isCacheable = true;
-      } else if ('last-modified' in res.headers) {
+      }
+      if ('last-modified' in res.headers) {
         isCacheable = true;
       }
 
       if(isCacheable) {
-        var ttlMillis = Math.max(expiryTimeMillis - new Date().getTime(), 0);
+        var ttlMillis = Math.max(expiryTimeMillis - Date.now(), 0);
         var cachedResponse = { response: cachedResponseProperties(res), expiryTimeMillis: expiryTimeMillis };
 
         cache.set(uri, private, cachedResponse, ttlMillis, function(err) {
