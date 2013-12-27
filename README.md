@@ -43,12 +43,12 @@ request('http://some.url', {cache: cache}, function(err, res, body) {
 ### Private caching
 
 ```javascript
-function publicFn(uri) {
+function publicFn(uri, cb) {
   cb(null, 'public:' + uri);
 }
 
-function privateFn(uri) {
-  cb(null, 'private:' + req.cookies['connect.sid'] + ':' uri);
+function privateFn(uri, cb) {
+  cb(null, 'private:' + req.cookies['connect.sid'] + ':' + uri);
 }
 
 var cache = new request.Cache(store, publicFn, privateFn);
