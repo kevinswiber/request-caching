@@ -71,8 +71,9 @@ describe('Cache', function() {
       if(err) return cb(err);
       cache.set('foo.zap.my-uri', false, 'my-zap-value', 1000, function(err) {
         if(err) return cb(err);
-        cache.delMatched('foo.bar.*', function(err) {
+        cache.delMatched('foo.bar.*', function(err, n) {
           if(err) return cb(err);
+          assert.equal(n, 1);
           cache.get('foo.bar.my-uri', function(err, value) {
             if(err) return cb(err);
             assert.equal(value, undefined);
@@ -95,8 +96,9 @@ describe('Cache', function() {
       if(err) return cb(err);
       cache.set('foo.zap.my-uri', false, 'my-zap-value', 10000, function(err) {
         if(err) return cb(err);
-        cache.delMatched('foo.bar.*', function(err) {
+        cache.delMatched('foo.bar.*', function(err, n) {
           if(err) return cb(err);
+          assert.equal(n, 1);
           cache.get('foo.bar.my-uri', function(err, value) {
             if(err) return cb(err);
             assert.equal(value, undefined);
