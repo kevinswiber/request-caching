@@ -1,111 +1,95 @@
 var assert = require('assert');
-var LRU = require('lru-cache');
-var Store = require('../lib/memory_store');
-var RedisStore = require('../lib/redis_store');
-var store = new Store(new LRU());
-
 var Cache = require('../lib/cache');
 
-describe('Cache', function() {
-  beforeEach(store.flush);
+var redis = require('redis').createClient();
+var RedisStore = require('../lib/redis_store');
+var redisStore = new RedisStore(redis);
 
-  it('Uses default publicKeyFn if none is provided', function(cb) {
-    var cache = new Cache(store);
-    cache.set('my-uri', false, 'my-value', 1000, function(err) {
-      if(err) return cb(err);
-      store.get('my-uri', function(err, value) {
-        if(err) return cb(err);
-        assert.equal(JSON.parse(value), 'my-value');
+var LRU = require('lru-cache');
+var MemoryStore = require('../lib/memory_store');
+var memoryStore = new MemoryStore(new LRU());
+
+[redisStore, memoryStore].forEach(function (store) {
+  describe('Cache with ' + store.constructor.name, function () {
+    beforeEach(store.flushAll);
+
+    it('Keys off uri when no prefix is provided', function (cb) {
+      var cache = new Cache(store);
+      cache.set('my-uri', false, 'my-value', 1000, function (err) {
+        if (err) return cb(err);
+        store.get('my-uri', function (err, value) {
+          if (err) return cb(err);
+          assert.equal(JSON.parse(value), 'my-value');
+          cb();
+        });
+      });
+    });
+
+    it('Requires privateSuffix for private caching', function (cb) {
+      var cache = new Cache(store);
+      cache.set('my-uri', true, 'my-value', 1000, function (err) {
+        if (!err) return cb(new Error('Should fail'));
+        assert.equal(err.message, 'Cannot cache privately without a privateSuffix');
         cb();
       });
     });
-  });
 
-  it('Requires an explicit privateKeyFn for private caching', function(cb) {
-    var cache = new Cache(store);
-    cache.set('my-uri', true, 'my-value', 1000, function(err) {
-      if(!err) return cb(new Error('Should fail'));
-      assert.equal(err.message, 'No provided key function for private caching');
-      cb();
+    it('Expires cached keys after TTL', function (cb) {
+      var cache = new Cache(store);
+      cache.set('my-uri', false, 'my-value', 10, function (err) {
+        if (err) return cb(err);
+        cache.get('my-uri', function (err, value) {
+          if (err) return cb(err);
+          assert.equal(value, 'my-value');
+          setTimeout(function () {
+            cache.get('my-uri', function (err, value) {
+              if (err) return cb(err);
+              assert.equal(value, undefined);
+              cb();
+            });
+          }, 10);
+        });
+      });
     });
-  });
 
-  it('Expires cached keys after TTL', function(cb) {
-    var cache = new Cache(store);
-    cache.set('my-uri', false, 'my-value', 10, function(err) {
-      if(err) return cb(err);
-      cache.get('my-uri', function(err, value) {
-        if(err) return cb(err);
-        assert.equal(value, 'my-value');
-        setTimeout(function() {
-          cache.get('my-uri', function(err, value) {
-            if(err) return cb(err);
+    it('Overrides TTL with custom function', function (cb) {
+      function oneMillisecond(ttl) {
+        return 1;
+      }
+
+      var cache = new Cache(store, null, null, oneMillisecond);
+      cache.set('my-uri', false, 'my-value', 100, function (err) {
+        if (err) return cb(err);
+        setTimeout(function () {
+          cache.get('my-uri', function (err, value) {
+            if (err) return cb(err);
             assert.equal(value, undefined);
             cb();
           });
         }, 10);
       });
     });
-  });
 
-  it('Overrides TTL with custom function', function(cb) {
-    function oneMillisecond(ttl) {
-      return 1;
-    }
-    var cache = new Cache(store, null, null, oneMillisecond);
-    cache.set('my-uri', false, 'my-value', 100, function(err) {
-      if(err) return cb(err);
-      setTimeout(function() {
-        cache.get('my-uri', function(err, value) {
-          if(err) return cb(err);
-          assert.equal(value, undefined);
-          cb();
-        });
-      }, 10);
-    });
-  });
+    it('Deletes Redis keys by match', function (cb) {
+      var fooCache = new Cache(store, 'foo:');
+      var barCache = new Cache(store, 'bar:');
 
-  it('Deletes LRU keys by match', function(cb) {
-    var cache = new Cache(store);
-    cache.set('foo.bar.my-uri', false, 'my-bar-value', 1000, function(err) {
-      if(err) return cb(err);
-      cache.set('foo.zap.my-uri', false, 'my-zap-value', 1000, function(err) {
-        if(err) return cb(err);
-        cache.delMatched('foo.bar.*', function(err, n) {
-          if(err) return cb(err);
-          assert.equal(n, 1);
-          cache.get('foo.bar.my-uri', function(err, value) {
-            if(err) return cb(err);
-            assert.equal(value, undefined);
-            cache.get('foo.zap.my-uri', function(err, value) {
-              if(err) return cb(err);
-              assert.equal(value, 'my-zap-value');
-              cb();
-            });
-          });
-        });
-      });
-    });
-  });
+      fooCache.set('KEY', false, 'FOO', 10000, function (err) {
+        if (err) return cb(err);
+        barCache.set('KEY', false, 'BAR', 10000, function (err) {
+          if (err) return cb(err);
 
-  it('Deletes Redis keys by match', function(cb) {
-    var redis = require('redis').createClient()
-    var store = new RedisStore(redis);
-    var cache = new Cache(store);
-    cache.set('foo.bar.my-uri', false, 'my-bar-value', 10000, function(err) {
-      if(err) return cb(err);
-      cache.set('foo.zap.my-uri', false, 'my-zap-value', 10000, function(err) {
-        if(err) return cb(err);
-        cache.delMatched('foo.bar.*', function(err, n) {
-          if(err) return cb(err);
-          assert.equal(n, 1);
-          cache.get('foo.bar.my-uri', function(err, value) {
-            if(err) return cb(err);
-            assert.equal(value, undefined);
-            cache.get('foo.zap.my-uri', function(err, value) {
-              if(err) return cb(err);
-              assert.equal(value, 'my-zap-value');
-              cb();
+          fooCache.flush(function (err, n) {
+            if (err) return cb(err);
+            assert.equal(n, 1);
+            fooCache.get('KEY', function (err, value) {
+              if (err) return cb(err);
+              assert.equal(value, undefined);
+              barCache.get('KEY', function (err, value) {
+                if (err) return cb(err);
+                assert.equal(value, 'BAR');
+                cb();
+              });
             });
           });
         });
