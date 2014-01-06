@@ -40,33 +40,34 @@ request('http://some.url', {cache: cache}, function(err, res, body) {
 });
 ```
 
-### Private caching
+### Cache flushing
 
-Some HTTP responses should be cached privately - i.e. it shouldn't be available for other users.
-This is the case when the server responds with `Cache-Control: private`.
-
-To handle this you should supply a `privateKey` function that will compute a cache key unique
-to the user associated with the request.
+You should always provide a `prefix` the key with the name of your app (or API). When you invoke `Cache.flush`, it will flush *all* keys starting with that prefix. If you don't specify a prefix, you'll flush the entire cache.
 
 ```javascript
-function publicKey(key, cb) {
-  cb(null, 'yourapp:' + key + ':public');
-}
+var prefix = 'yourapp:';
+var cache = new request.Cache(store, prefix);
+```
 
-function privateKey(key, cb) {
-  // If you don't have a user, you should use the session id: req.cookies['connect.sid']
-  cb(null, 'yourapp:' + key + ':private:' + req.currentUser._id);
-}
+### Private caching
 
-var cache = new request.Cache(store, publicFn, privateFn);
+Some HTTP responses should be cached privately - i.e. they shouldn't be available for other users.
+This is the case when the server responds with `Cache-Control: private`.
+
+To handle this you should construct the `Cache` with a `privateSuffix` String argument. This suffix will be appended to the key when caching a private response.
+
+```javascript
+var prefix = 'yourapp:';
+var unique = req.currentUser._id; // or req.cookies['connect.sid']
+var privateSuffix = 'private:' + unique;
+var cache = new request.Cache(store, prefix, privateSuffix);
 
 request('http://some.url', {cache: cache}, function(err, res, body) {
   
 });
 ```
 
-It's a good idea to prefix the key with the name of your app (or API) to make it easier to find
-(and delete) keys selectively. See `Cache.delMatched`. 
+You will get an error if no `privateSuffix` was provided when caching a private response.
 
 ### Custom TTL
 
@@ -92,4 +93,4 @@ request('http://some.url', {cache: cache}, function(err, res, body) {
 * If a cached response is expired, issue request with `If-None-Match` value from cached response's `ETag`.
   * If response is 304 (Not Modified), returned cached response.
 * Cacheable responses marked as private are cached with a private cache key.
-* Cache lookups look in private cache first, and then in the public cache.
+* Cache lookups look in public cache first, and then in the private cache.
