@@ -19,7 +19,7 @@
   "author": "Kevin Swiber",
   "license": "MIT/X11",
   "dependencies": {
-    "request": "~2.34.0"
+    "request": "2.34.0"
   },
   "devDependencies": {
     "mocha": "~1.17.1",
