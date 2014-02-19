@@ -36,12 +36,16 @@ module.exports = function(uri, options, callback) {
 
     request(uri, options, function(err, res, body) {
       if (err) return callback(err, res, body);
-
       if(res.statusCode == 304) {
+        // 304 means it's OK to use the cached value.
         return callback(null, value.response, value.response.body);
       }
+      if(res.statusCode >= 300) {
+        // Only cache 2xx responses
+        return callback(null, res, body);
+      }
 
-      var isCacheable = false;
+      var isCacheable = true;
       var expiryTimeMillis = FOREVER_MILLIS;
       var private = false;
       if ('cache-control' in res.headers) {

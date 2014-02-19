@@ -107,6 +107,25 @@ var redisStore = new request.RedisStore(redis);
         });
     });
 
+    it("doesn't cache when response code is not 2xx", function (cb) {
+      http.createServer(function (req, res) {
+        var date = new Date().toUTCString();
+        var expires = new Date(date);
+        expires = new Date(expires.setSeconds(expires.getSeconds() + 30)).toUTCString();
+        res.writeHead(403, { 'Date': date, 'Expires': expires });
+        res.end('Cachifiable!');
+      }).listen(++port, function () {
+          request('http://localhost:' + port, { cache: cache }, function (err, res) {
+            if (err) return cb(err);
+            cache.get('http://localhost:' + port, function (err, val) {
+              if (err) return cb(err);
+              assert.equal(val, null);
+              cb();
+            });
+          });
+        });
+    });
+
     it('re-requests with If-None-Match when Etag is in response', function (cb) {
       var three_o_four = false;
       http.createServer(function (req, res) {
