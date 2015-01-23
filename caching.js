@@ -36,7 +36,12 @@ module.exports = function(uri, options, callback) {
       if (err) return callback(err, res, body);
 
       if(res.statusCode == 304) {
-        return callback(null, value.response, value.response.body);
+        if (!value) { // weird stuff ???
+          return callback('value is unexpectedly null for "' + uri + '"');
+        } else {
+          value.response.headers = res.headers;
+          return callback(null, value.response, value.response.body);
+        }
       }
 
       var cacheable = false;
