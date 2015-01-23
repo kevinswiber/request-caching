@@ -37,7 +37,7 @@ module.exports = function(uri, options, callback) {
 
       if(res.statusCode == 304) {
         if (!value) { // weird stuff ???
-          throw new Error('value is unexpectedly null for "' + uri + '"')
+          return callback('value is unexpectedly null for "' + uri + '"');
         } else {
           value.response.headers = res.headers;
           return callback(null, value.response, value.response.body);
