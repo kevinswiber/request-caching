@@ -44,7 +44,7 @@ module.exports = function(uri, options, callback) {
       var private = false;
       if ('cache-control' in res.headers) {
         // In case of Cache-Control: no-cache, cacheable should remain false.
-        var val = res.headers['cache-control'].replace(/\s/,'').split(',');
+        var val = res.headers['cache-control'].split(/\s*,\s*/);
         var cacheControl = {};
         val.forEach(function(dir) {
           var arr = dir.split('=');
